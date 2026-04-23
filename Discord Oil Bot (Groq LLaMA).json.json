@@ -1,0 +1,564 @@
+{
+  "name": "Discord Oil Bot (Groq LLaMA)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        4768,
+        -368
+      ],
+      "id": "6a763963-f53d-4b0a-9d98-a7dbf2266447",
+      "name": "Daily 6AM1"
+    },
+    {
+      "parameters": {
+        "url": "https://api.chnwt.dev/thai-oil-api/latest",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5040,
+        -368
+      ],
+      "id": "13496403-67d8-4c67-bf78-3b12b5ce6641",
+      "name": "Fetch Oil (Daily)1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = response.response;\nconst stations = data.stations;\nconst date = data.date;\n\nconst fuelNames = {\n  diesel: 'ดีเซล B7',\n  diesel_b20: 'ดีเซล B20',\n  premium_diesel: 'ดีเซลพรีเมียม',\n  gasohol_95: 'แก๊สโซฮอล์ 95',\n  gasohol_91: 'แก๊สโซฮอล์ 91',\n  gasohol_e20: 'แก๊สโซฮอล์ E20',\n  gasohol_e85: 'แก๊สโซฮอล์ E85',\n  benzine_95: 'เบนซิน 95'\n};\n\nconst stationNames = { ptt: 'PTT', shell: 'Shell', bcp: 'Bangchak' };\nlet report = 'วันที่: ' + date + '\\n';\n\nfor (const [sKey, sName] of Object.entries(stationNames)) {\n  const s = stations[sKey];\n  if (!s) continue;\n  report += '\\n== ' + sName + ' ==\\n';\n  for (const [fKey, fName] of Object.entries(fuelNames)) {\n    if (s[fKey] && s[fKey].price) {\n      report += fName + ': ' + s[fKey].price + ' บาท/ลิตร\\n';\n    }\n  }\n}\n\nreturn [{ json: { prompt: 'สรุปราคาน้ำมันทุกชนิดทุกปั๊มวันนี้ เปรียบเทียบว่าปั๊มไหนถูกกว่า:\\n' + report } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5296,
+        -368
+      ],
+      "id": "ebdef4f0-33ae-4ccc-96af-2e695d151a22",
+      "name": "Prepare Daily Prompt1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "systemMessage": "คุณคือแชทบอทชื่อ OilBot รายงานราคาน้ำมันรายวันใน Discord สรุปให้อ่านง่าย น่าสนใจ ใช้ emoji สวยงาม ภาษาไทย กระชับ ไม่เกิน 800 ตัวอักษร ห้ามใช้ markdown heading (#) ใช้ได้แค่ bold (**text**) และ emoji เพิ่มคำแนะนำว่าปั๊มไหนถูกสุด น้ำมันขึ้นหรือลง ควรเติมไหม"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        5568,
+        -368
+      ],
+      "id": "d2629c2e-7de4-41cb-af59-ba3077adf2e0",
+      "name": "AI Agent (Daily)1"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "maxTokensToSample": 800,
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        5568,
+        -144
+      ],
+      "id": "8d3413cd-9a5e-495e-8ad3-b516a6debf76",
+      "name": "Groq Model (Daily)1",
+      "credentials": {
+        "groqApi": {
+          "id": "kUrmFHfcwr3gB7PZ",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/v10/channels/1496675509499592837/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5856,
+        -368
+      ],
+      "id": "b5bca7f7-9f6e-4112-93bf-939c33cb34e0",
+      "name": "Bot Send (Daily)1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "uAqxrem9ETUUcsrT",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "discord-bot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        4768,
+        144
+      ],
+      "id": "a2367f6c-1b84-4175-9ac8-491442c02bca",
+      "name": "Webhook (Discord Bot)1",
+      "webhookId": "ea93f9a2-e348-44f0-834b-6d95f200986d"
+    },
+    {
+      "parameters": {
+        "url": "https://api.chnwt.dev/thai-oil-api/latest",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5040,
+        144
+      ],
+      "id": "d4387bef-b292-48e1-a61d-57bd3cce6ac8",
+      "name": "Fetch Oil (Command)1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = response.response;\nconst stations = data.stations;\nconst date = data.date;\nconst body = $('Webhook (Discord Bot)1').first().json.body;\nconst channelId = body.channelId || '';\nconst msg = (body.message || body.content || '').trim();\nconst msgLower = msg.toLowerCase();\nconst isChat = body.isChat === true;\n\nconst fuelNames = {\n  diesel: 'ดีเซล B7',\n  diesel_b20: 'ดีเซล B20',\n  premium_diesel: 'ดีเซลพรีเมียม',\n  gasohol_95: 'แก๊สโซฮอล์ 95',\n  gasohol_91: 'แก๊สโซฮอล์ 91',\n  gasohol_e20: 'แก๊สโซฮอล์ E20',\n  gasohol_e85: 'แก๊สโซฮอล์ E85',\n  benzine_95: 'เบนซิน 95'\n};\n\nconst stationNames = { ptt: 'PTT', shell: 'Shell', bcp: 'Bangchak' };\n\nif (msgLower === '!help') {\n  return [{ json: { channelId, prompt: 'แสดงรายการคำสั่งให้สวยงาม: !all (ทุกชนิด), !diesel (ดีเซล B7), !b20 (ดีเซล B20), !d-premium (ดีเซลพรีเมียม), !95 (แก๊สโซฮอล์ 95), !91 (แก๊สโซฮอล์ 91), !e20 (E20), !e85 (E85), !benzine (เบนซิน 95), !compare (เปรียบเทียบทุกปั๊ม), !ask <ข้อความ> (คุยเรื่องน้ำมัน), @OilBot (คุยเรื่องน้ำมัน), !help (คำสั่งทั้งหมด)' } }];\n}\n\nlet allOilData = 'วันที่: ' + date + '\\n';\nfor (const [sKey, sName] of Object.entries(stationNames)) {\n  const s = stations[sKey];\n  if (!s) continue;\n  allOilData += '\\n== ' + sName + ' ==\\n';\n  for (const [fKey, fName] of Object.entries(fuelNames)) {\n    if (s[fKey] && s[fKey].price) {\n      allOilData += fName + ': ' + s[fKey].price + ' บาท/ลิตร\\n';\n    }\n  }\n}\n\nif (isChat) {\n  const promptText = 'ผู้ใช้ถามว่า: ' + msg + '\\n\\nข้อมูลราคาน้ำมันล่าสุด:\\n' + allOilData;\n  return [{ json: { channelId, prompt: promptText } }];\n}\n\nconst cmdMap = {\n  '!all': Object.keys(fuelNames),\n  '!diesel': ['diesel'],\n  '!95': ['gasohol_95'],\n  '!91': ['gasohol_91'],\n  '!e20': ['gasohol_e20'],\n  '!e85': ['gasohol_e85'],\n  '!benzine': ['benzine_95'],\n  '!b20': ['diesel_b20'],\n  '!d-premium': ['premium_diesel'],\n  '!compare': Object.keys(fuelNames)\n};\n\nconst fuelKeys = cmdMap[msgLower] || Object.keys(fuelNames);\nconst isCompare = msgLower === '!compare';\n\nlet info = 'วันที่: ' + date + '\\n';\nfor (const [sKey, sName] of Object.entries(stationNames)) {\n  const s = stations[sKey];\n  if (!s) continue;\n  info += '\\n== ' + sName + ' ==\\n';\n  for (const fKey of fuelKeys) {\n    if (s[fKey] && s[fKey].price) {\n      info += (fuelNames[fKey] || fKey) + ': ' + s[fKey].price + ' บาท/ลิตร\\n';\n    }\n  }\n}\n\nlet promptText = '';\nif (isCompare) {\n  promptText = 'เปรียบเทียบราคาน้ำมันระหว่างปั๊ม แนะนำว่าปั๊มไหนถูกที่สุดแต่ละชนิด:\\n' + info;\n} else if (msgLower === '!all') {\n  promptText = 'แสดงราคาน้ำมันทั้งหมดทุกปั๊ม:\\n' + info;\n} else {\n  promptText = 'ผู้ใช้สั่ง ' + msgLower + ' แสดงราคาเฉพาะตัว:\\n' + info;\n}\n\nreturn [{ json: { channelId, prompt: promptText } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5296,
+        144
+      ],
+      "id": "3879eb01-c6f7-469a-9990-e82e07fd098e",
+      "name": "Parse Command1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "systemMessage": "คุณคือแชทบอทชื่อ OilBot ใน Discord ผู้เชี่ยวชาญด้านราคาน้ำมันในไทย ตอบคำถามเรื่องราคาน้ำมัน ใช้ภาษาไทย ใช้ emoji สวยงาม กระชับ ไม่เกิน 800 ตัวอักษร ห้ามใช้ markdown heading (#) ใช้ได้แค่ bold (**text**) และ emoji ถ้าเปรียบเทียบปั๊ม ให้บอกชัดว่าปั๊มไหนถูกสุด ถ้าผู้ใช้ถามเรื่องอื่นที่ไม่เกี่ยวกับน้ำมัน ให้บอกสุภาพว่าเป็น OilBot ตอบได้เฉพาะเรื่องน้ำมันเท่านั้น แล้วแนะนำให้ลองถามเรื่องน้ำมันแทน"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        5568,
+        144
+      ],
+      "id": "dbf6971d-9ac2-459d-bae6-5700cfb2df4a",
+      "name": "AI Agent (Command)1"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "maxTokensToSample": 800,
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        5568,
+        352
+      ],
+      "id": "d9bfc575-e23c-413c-b5f2-77b2933e4c7a",
+      "name": "Groq Model (Command)1",
+      "credentials": {
+        "groqApi": {
+          "id": "kUrmFHfcwr3gB7PZ",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/v10/channels/{{ $('Parse Command1').first().json.channelId }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5856,
+        144
+      ],
+      "id": "f135234d-82af-4dbf-80b2-8bd4593fef75",
+      "name": "Bot Send (Command)1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "uAqxrem9ETUUcsrT",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"ok\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        6096,
+        144
+      ],
+      "id": "ae939c63-163f-44ae-a9ce-5d256eeaab11",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        4768,
+        640
+      ],
+      "id": "9fd632cb-433a-4d24-83e5-bf0c104b2ba2",
+      "name": "Check Every 3h1"
+    },
+    {
+      "parameters": {
+        "url": "https://api.chnwt.dev/thai-oil-api/latest",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5040,
+        640
+      ],
+      "id": "5a0282fd-034b-4668-8be2-2fbabb874edf",
+      "name": "Fetch Oil (Alert)1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = response.response;\nconst stations = data.stations;\nconst staticData = $getWorkflowStaticData('global');\n\nconst fuelKeys = ['diesel', 'diesel_b20', 'premium_diesel', 'gasohol_95', 'gasohol_91', 'gasohol_e20', 'gasohol_e85'];\nconst stationNames = { ptt: 'PTT', shell: 'Shell', bcp: 'Bangchak' };\nconst fuelNames = { diesel: 'ดีเซล B7', diesel_b20: 'ดีเซล B20', premium_diesel: 'ดีเซลพรีเมียม', gasohol_95: 'แก๊สโซฮอล์ 95', gasohol_91: 'แก๊สโซฮอล์ 91', gasohol_e20: 'แก๊สโซฮอล์ E20', gasohol_e85: 'แก๊สโซฮอล์ E85' };\n\nconst currentPrices = {};\nfor (const [sKey, sName] of Object.entries(stationNames)) {\n  const s = stations[sKey];\n  if (!s) continue;\n  for (const fKey of fuelKeys) {\n    if (s[fKey] && s[fKey].price) {\n      currentPrices[sKey + '_' + fKey] = s[fKey].price;\n    }\n  }\n}\n\nconst prev = staticData.previousPrices || {};\nconst changes = [];\n\nfor (const [key, val] of Object.entries(currentPrices)) {\n  if (prev[key] !== undefined && prev[key] !== val) {\n    const diff = val - prev[key];\n    const parts = key.split('_');\n    const station = (stationNames[parts[0]] || parts[0]).toUpperCase();\n    const fuel = parts.slice(1).join('_');\n    const fName = fuelNames[fuel] || fuel;\n    const arrow = diff > 0 ? 'ขึ้น' : 'ลง';\n    changes.push(station + ' ' + fName + ': ' + prev[key] + ' -> ' + val + ' (' + arrow + ' ' + Math.abs(diff).toFixed(2) + ' บาท)');\n  }\n}\n\nstaticData.previousPrices = currentPrices;\n\nif (changes.length === 0) return [];\n\nreturn [{ json: { prompt: 'ราคาน้ำมันเปลี่ยนแปลง! แจ้งเตือนผู้ใช้:\\n\\nวันที่: ' + data.date + '\\n\\nรายการที่เปลี่ยน:\\n' + changes.join('\\n') } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5296,
+        640
+      ],
+      "id": "f91b98ac-e707-48a5-8ee4-bed64ce41f58",
+      "name": "Detect Price Change1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "systemMessage": "คุณคือแชทบอท OilBot แจ้งเตือนราคาน้ำมันเปลี่ยนแปลงใน Discord ใช้ emoji เตือนให้น่าสนใจ บอกว่าขึ้นหรือลงเท่าไหร่ ควรรีบเติมไหม ภาษาไทย กระชับ ห้ามใช้ heading (#) ใช้ bold (**) และ emoji เท่านั้น"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        5568,
+        640
+      ],
+      "id": "7591d72e-1c10-43b0-96d4-c9781e57187a",
+      "name": "AI Agent (Alert)1"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "maxTokensToSample": 600,
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        5568,
+        864
+      ],
+      "id": "1e4e7cd4-0cbf-42d6-ad26-30f406339326",
+      "name": "Groq Model (Alert)1",
+      "credentials": {
+        "groqApi": {
+          "id": "kUrmFHfcwr3gB7PZ",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/v10/channels/1496675559093174463/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $json.output }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5856,
+        640
+      ],
+      "id": "4b056b02-40d0-40a9-bd43-37c9a6906a34",
+      "name": "Bot Send (Alert)1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "uAqxrem9ETUUcsrT",
+          "name": "Header Auth account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 6AM1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Oil (Daily)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Oil (Daily)1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Daily Prompt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Daily Prompt1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (Daily)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (Daily)1": {
+      "main": [
+        [
+          {
+            "node": "Bot Send (Daily)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model (Daily)1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (Daily)1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (Discord Bot)1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Oil (Command)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Oil (Command)1": {
+      "main": [
+        [
+          {
+            "node": "Parse Command1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Command1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (Command)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (Command)1": {
+      "main": [
+        [
+          {
+            "node": "Bot Send (Command)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model (Command)1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (Command)1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bot Send (Command)1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Every 3h1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Oil (Alert)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Oil (Alert)1": {
+      "main": [
+        [
+          {
+            "node": "Detect Price Change1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Price Change1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (Alert)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (Alert)1": {
+      "main": [
+        [
+          {
+            "node": "Bot Send (Alert)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Model (Alert)1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (Alert)1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f169a093-2772-415c-995a-c44c7eb0df59",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "79957a6d8956bf9ef5dd1593d853b85415640ac54734f21322e3d6e863f7d1a9"
+  },
+  "id": "DCRBEii2I3PPhlOv",
+  "tags": []
+}
