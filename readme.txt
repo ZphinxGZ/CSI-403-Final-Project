@@ -1,6 +1,11 @@
 ================================================================================
                      Discord Oil Bot (Groq LLaMA) - OilBot
 ================================================================================
+                      Links เชิญบอท และ Link สำหรับ Discord server
+Links เชิญบอท = https://discord.com/oauth2/authorize?client_id=1495827397118005450&permissions=137439037440&integration_type=0&scope=bot+applications.commands
+
+Link สำหรับ Discord server =https://discord.gg/BNzwqVaB7
+================================================================================
 
 บอทราคาน้ำมันไทยบน Discord ใช้ AI (LLaMA 3.3 70B ผ่าน Groq) สรุปข้อมูลราคา
 น้ำมันจาก 3 ปั๊ม (PTT, Shell, Bangchak) ให้อ่านง่ายเป็นภาษาไทย
@@ -135,3 +140,5 @@
   - Language         : Node.js
 
 ================================================================================
+
+
